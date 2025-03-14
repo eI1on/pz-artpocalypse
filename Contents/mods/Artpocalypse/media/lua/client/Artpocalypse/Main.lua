@@ -18,7 +18,7 @@ PixelCanvas.TOOLS = {
     EYEDROPPER = "eyedropper",
     LINE = "line"
 }
-PixelCanvas.CHUNK_SIZE = 16   -- each chunk is 16x16 pixels
+PixelCanvas.CHUNK_SIZE = 16 -- each chunk is 16x16 pixels
 
 PixelCanvas.UI = {
     PADDING = 5,
@@ -391,10 +391,26 @@ function PixelCanvas:adjustBrushSize(delta)
 end
 
 function PixelCanvas:clearCanvas()
+    local currentState = {}
+    for k, v in pairs(self.pixelData) do
+        currentState[k] = { r = v.r, g = v.g, b = v.b, a = v.a }
+    end
+
+    if not self.undoStack then
+        self.undoStack = table.newarray()
+    end
+    self.undoStack[#self.undoStack + 1] = currentState
+
+    self.redoStack = table.newarray()
+
     self.pixelData = {}
+
     self.chunks = {}
+    self.dirtyChunks = {}
+
     self:markAllChunksDirty()
-    self:saveToUndoStack()
+
+    self.cacheInvalid = true
 end
 
 function PixelCanvas:markChunkDirty(x, y)
@@ -613,7 +629,7 @@ function PixelCanvas:fillArea(startX, startY, targetColor)
     local chunkSize = PixelCanvas.CHUNK_SIZE
 
     while #queue > 0 and pixelsChanged < MAX_PIXELS do
----@diagnostic disable-next-line: param-type-mismatch
+        ---@diagnostic disable-next-line: param-type-mismatch
         local point = table.remove(queue, 1)
         local x, y = point.x, point.y
         local key = x .. "," .. y
